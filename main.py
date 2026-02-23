@@ -22,10 +22,17 @@ model = getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 def search(query: str) -> str:
     """Search the web for information about a topic."""
     logger.debug(f"Running search tool with query: {query}")
-    ducksearch = DuckDuckGoSearchRun()
     try:
-      result = ducksearch.run(query)
-      logger.debug(f"Search results for '{query}':\n\n{result}")
+      with DDGS() as ddgs:
+        results = ddgs.text(query, max_results=3)
+        if not results:
+          return "No results found."
+        formatted = "\n\n".join(
+            f"{r['title']}\n{r['href']}\n{r['body']}"
+            for r in results
+        )
+        logger.debug(f"Formatted search results:\n{formatted}")
+        return formatted
     except Exception as e:
       logger.error(f"Search.run failed for {query}: {e}")
       result = f"Error: {e}"
