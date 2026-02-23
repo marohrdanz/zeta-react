@@ -24,6 +24,94 @@ console = Console()  # For rich output
 
 # --- 1. Define Tools ---
 
+# The docstrings are important for the model to understand how to use the tools,
+# so be sure to include clear instructions and examples.
+# The @tool decorator is what makes these functions available as tools that
+# the model can call during the conversation.
+
+@tool
+def get_major_scale(key: str) -> list[str]:
+    """Given a musical key, return the major scale for that key.
+
+    Example input: 'C'
+
+    Example output for 'C': ['C', 'D', 'E', 'F', 'G', 'A', 'B']
+    """
+    # All notes in chromatic scale (using sharps)
+    chromatic = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+    # Enharmonic equivalents (flat -> sharp)
+    enharmonic = {
+        "Db": "C#", "Eb": "D#", "Fb": "E", "Gb": "F#",
+        "Ab": "G#", "Bb": "A#", "Cb": "B"
+    }
+
+    # Major scale interval pattern: W W H W W W H
+    # (in semitones: 2 2 1 2 2 2 1)
+    intervals = [2, 2, 1, 2, 2, 2, 1]
+
+    # Normalize the key
+    key = key.strip().capitalize()
+    if len(key) > 1:
+        key = key[0].upper() + key[1:].lower()
+    key = enharmonic.get(key, key)
+
+    if key not in chromatic:
+        raise ValueError(f"Invalid key: '{key}'. Use note names like C, D#, Bb, etc.")
+
+    # Build the scale
+    start = chromatic.index(key)
+    scale = []
+    pos = start
+    for interval in intervals:
+        scale.append(chromatic[pos % 12])
+        pos += interval
+
+    return scale
+
+@tool
+def get_blues_scale(key: str) -> list[str]:
+    """Given a musical key, return the blues scale for that key.
+
+    Example input: 'C'
+
+    Example output for 'C': ['C', 'Eb', 'F', 'Gb', 'G', 'Bb']
+    """
+    # All notes in chromatic scale
+    chromatic = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+    # Enharmonic equivalents (flat -> sharp)
+    enharmonic = {
+        "Db": "C#", "Eb": "D#", "Fb": "E", "Gb": "F#",
+        "Ab": "G#", "Bb": "A#", "Cb": "B"
+    }
+
+    # Blues scale intervals (semitones): 3 2 1 1 3 2
+    # Formula: Root, b3, 4, b5, 5, b7, Root
+    intervals = [3, 2, 1, 1, 3, 2]
+
+    # Normalize the key
+    key = key.strip()
+    if len(key) > 1:
+        key = key[0].upper() + key[1:].lower()
+    else:
+        key = key.upper()
+    key = enharmonic.get(key, key)
+
+    if key not in chromatic:
+        raise ValueError(f"Invalid key: '{key}'. Use note names like C, D#, Bb, etc.")
+
+    # Build the scale
+    start = chromatic.index(key)
+    scale = []
+    pos = start
+    for interval in intervals:
+        scale.append(chromatic[pos % 12])
+        pos += interval
+
+    return scale
+
+
 @tool
 def search(query: str) -> str:
     """Search the web for information about a topic."""
@@ -42,16 +130,8 @@ def search(query: str) -> str:
       result = f"Error: {e}"
     return result
 
-@tool
-def calculator(expression: str) -> str:
-    """Evaluate a math expression. Example input: '2 + 2' or '100 * 3.14'"""
-    try:
-        result = eval(expression, {"__builtins__": {}}, {})
-        return str(result)
-    except Exception as e:
-        return f"Error: {e}"
 
-tools = [search, calculator]
+tools = [search, get_major_scale, get_blues_scale]
 
 # --- 2. Define Agent State ---
 
@@ -60,12 +140,16 @@ class AgentState(TypedDict):
 
 # --- 3. Set Up the Model ---
 
+# .bind_tools is what connects the model to the tools, allowing
+# it to decide when to call them based on the conversation.
+
 model = ChatAnthropic(model=model).bind_tools(tools)
 
 # --- 4. Define the Nodes ---
 
-system_prompt = SystemMessage(content="""You are a helpful research assistant.
-Use the search tool to look up information and the calculator tool for math.
+system_prompt = SystemMessage(content="""You are a Miles Davis.
+Use the search tool to look up information, the get_major_scale tool to get notes
+in a major scale, and get_blues_scale to get notes in the blues scale.
 Think step by step about what you need to do.""")
 
 def agent_node(state: AgentState):
@@ -79,8 +163,11 @@ def should_continue(state: AgentState):
     """Decide whether to call a tool or end."""
     print_agent_state(state, title="Agent State Before Decision")
     last_message = state["messages"][-1]
+    logger.debug(f"last_message: {last_message}")
+    # if the most recent message includes a tool call, we want to go to the tool node next
     if last_message.tool_calls:
         return "tools"
+    # otherwise, we assume the agent is done and we can end the execution
     return END
 
 # --- 5. Build the Graph ---
@@ -104,7 +191,7 @@ graph.add_edge("tools", "agent")  # After tool call, go back to agent
 
 app = graph.compile()
 mermaid_code = app.get_graph().draw_mermaid()
-logger.info("Mermaid Diagram:")
+logger.info("Mermaid Diagram (to cut-and-paste into README):")
 print(mermaid_code)
 
 # --- 6. Run It ---
@@ -208,7 +295,7 @@ def print_agent_state(state: AgentState, title: str = "Agent State"):
 # Example usage
 if __name__ == "__main__":
     logger.info("Starting agent...")
-    question = "Who created calculus, and what is 1991 / 33?"
+    question = "What the notes the C major, minor, and blues scales? What can you tell me about cool jazz?"
     response = run_agent(question)
     console.print(Panel.fit(f"Question: {question}", title="User Question", style="yellow"))
     console.print(Panel.fit(f"Response: {response}", title="Agent Response", style="cyan"))
