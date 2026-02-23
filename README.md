@@ -1,5 +1,4 @@
-This is me learning about ReAct (Reasoning and Acting) and how to use it in my projects.
-I will be using the ReAct framework to build intelligent agents that can reason and act in complex environments.
+This is a toy project for me to learn about ReAct (Reasoning and Acting) and how to use it in my projects.
 
 ```mermaid
 %%{init: {'theme': 'neutral'}}%%
@@ -17,7 +16,27 @@ graph TD;
 	classDef last fill:#bfb6fc
 ```
 
+## Requirements
 
+### Anthropic API Key
+
+This project uses the Anthropic API. Add an API key to the .env file:
+
+```text
+ANTHROPIC_API_KEY=...
+```
+
+### Langfuse Instance
+
+This project uses an external Langfuse instance to keep track of traces. Ask your
+favorate AI about how to set one up (easy with docker), and add the following
+envs to the .env file:
+
+```text
+LANGFUSE_PUBLIC_KEY=...
+LANGFUSE_SECRET_KEY=...
+LANGFUSE_HOST=http://localhost:3000
+```
 
 ## Example
 

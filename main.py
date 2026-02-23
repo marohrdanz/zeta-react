@@ -10,6 +10,8 @@ from tools import tools
 from rich.console import Console
 from rich.panel import Panel
 from print_utils import print_agent_state
+from langfuse.langchain import CallbackHandler
+from langfuse import get_client
 from state import AgentState
 
 load_dotenv()  # Load environment variables from .env file
@@ -77,9 +79,12 @@ print(mermaid_code)
 # --- Run It ---
 
 def run_agent(question: str):
-    result = app.invoke({
-        "messages": [HumanMessage(content=question)]
-    })
+    langfuse_handler = CallbackHandler()
+    result = app.invoke(
+        {"messages": [HumanMessage(content=question)]},
+        config={"callbacks": [langfuse_handler]}
+    )
+    get_client().flush()  # Ensure all callbacks are sent to Langfuse
     print_agent_state(result, title="Final Agent State")
     return result["messages"][-1].content
 
