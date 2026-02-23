@@ -1,10 +1,8 @@
-from typing import Annotated, TypedDict
 from langchain_anthropic import ChatAnthropic
 from langchain_core.tools import tool
 from langchain_core.messages import AnyMessage, AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
-from langgraph.graph.message import add_messages
 from dotenv import load_dotenv
 from os import getenv
 import log_setup
@@ -12,16 +10,12 @@ from tools import tools
 from rich.console import Console
 from rich.panel import Panel
 from print_utils import print_agent_state
+from state import AgentState
 
 load_dotenv()  # Load environment variables from .env file
 logger = log_setup.configure_logging()
 model = getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 console = Console()  # For rich output
-
-# --- Define Agent State ---
-
-class AgentState(TypedDict):
-    messages: Annotated[list[AnyMessage], add_messages]
 
 # --- Set Up the Model ---
 
